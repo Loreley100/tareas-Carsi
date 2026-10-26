@@ -43,7 +43,6 @@ class ApiClient {
   Future<dynamic> get(String path) => _send('GET', path);
   Future<dynamic> post(String path, Object body) => _send('POST', path, body);
   Future<dynamic> patch(String path, Object body) => _send('PATCH', path, body);
-  Future<dynamic> update(String path, Object body) => _send('UPDATE', path, body);
   Future<void> delete(String path) => _send('DELETE', path);
 
   Future<dynamic> _send(String method, String path, [Object? body]) async {
@@ -75,8 +74,7 @@ class ApiClient {
       await _tokens?.clear();
       throw const UnauthorizedFailure();
     }
-    if (code >= 200 && code <= 300) {
-      // En Práctica B se conserva el límite original; se ajusta en la Tarea 1.
+    if (code >= 200 && code < 300) {
       return json;
     }
     throw mapHttpError(code, json);
