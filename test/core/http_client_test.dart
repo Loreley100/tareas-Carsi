@@ -20,76 +20,97 @@ ApiClient clienteQueResponde(int status, [Object? body]) {
 }
 
 void main() {
-  group('ApiClient: mapeo de errores HTTP', () {
+  group('ApiClient: respuestas HTTP', () {
     test('200 devuelve el JSON decodificado', () async {
       final api = clienteQueResponde(200, [
         {'id': 1, 'customer': 'Ana'},
       ]);
+
       final resultado = await api.get('/orders');
+
       expect(resultado, isA<List>());
       expect(resultado[0]['id'], 1);
+      expect(resultado[0]['customer'], 'Ana');
     });
 
-    test('404 conserva detail en NotFoundFailure', () async {
-      final api = clienteQueResponde(404, {'detail': 'Order 999 not found'});
+    test('404 conserva el detail en NotFoundFailure', () async {
+      final api = clienteQueResponde(404, {'detail': 'Order 9 not found'});
+
       await expectLater(
-        api.get('/orders/999'),
-        throwsA(isA<NotFoundFailure>().having(
-          (failure) => failure.message,
-          'message',
-          'Order 999 not found',
-        )),
+        api.get('/orders/9'),
+        throwsA(
+          isA<NotFoundFailure>().having(
+            (failure) => failure.message,
+            'message',
+            'Order 9 not found',
+          ),
+        ),
       );
     });
 
-    test('409 conserva detail en ConflictFailure', () async {
-      const mensaje = 'Cannot change status from pending to delivered';
+    test('409 conserva el detail en ConflictFailure', () async {
+      final mensaje = 'Cannot change status from pending to delivered';
       final api = clienteQueResponde(409, {'detail': mensaje});
+
       await expectLater(
-        api.patch('/orders/1', {'status': 'delivered'}),
-        throwsA(isA<ConflictFailure>().having(
-          (failure) => failure.message,
-          'message',
-          mensaje,
-        )),
+        api.patch('/orders/9', {'status': 'delivered'}),
+        throwsA(
+          isA<ConflictFailure>().having(
+            (failure) => failure.message,
+            'message',
+            mensaje,
+          ),
+        ),
       );
     });
 
-    test('422 guarda los mensajes por campo en ValidationFailure', () async {
+    test('422 convierte detail en un mapa de errores por campo', () async {
       final api = clienteQueResponde(422, {
         'detail': [
-          {'loc': ['body', 'customer'], 'msg': 'Must be 1-50 characters'},
+          {
+            'loc': ['body', 'customer'],
+            'msg': 'Must be 1-50 characters',
+          },
         ],
       });
+
       await expectLater(
         api.post('/orders', {'customer': '', 'drink': 'latte', 'size': 'M'}),
-        throwsA(isA<ValidationFailure>().having(
-          (failure) => failure.fields,
-          'fields',
-          {'customer': 'Must be 1-50 characters'},
-        )),
+        throwsA(
+          isA<ValidationFailure>().having(
+            (failure) => failure.fields,
+            'fields',
+            {'customer': 'Must be 1-50 characters'},
+          ),
+        ),
       );
     });
 
     test('503 conserva el código en ServerFailure', () async {
       final api = clienteQueResponde(503, {'detail': 'Simulated failure'});
+
       await expectLater(
-        api.get('/orders?fail=503'),
-        throwsA(isA<ServerFailure>().having(
-          (failure) => failure.statusCode,
-          'statusCode',
-          503,
-        )),
+        api.get('/orders'),
+        throwsA(
+          isA<ServerFailure>().having(
+            (failure) => failure.statusCode,
+            'statusCode',
+            503,
+          ),
+        ),
       );
     });
 
-    test('418 se convierte en UnexpectedFailure con status y detail', () async {
-      final api = clienteQueResponde(418, {'detail': 'Simulated failure'});
+    test('300 se trata como UnexpectedFailure', () async {
+      final api = clienteQueResponde(300, {'detail': 'Multiple Choices'});
+
       await expectLater(
-        api.get('/orders?fail=418'),
-        throwsA(isA<UnexpectedFailure>()
-            .having((failure) => failure.statusCode, 'statusCode', 418)
-            .having((failure) => failure.message, 'message', 'Simulated failure')),
+        api.get('/orders'),
+        throwsA(
+          isA<UnexpectedFailure>()
+              .having((failure) => failure.statusCode, 'statusCode', 300)
+              .having((failure) => failure.message, 'message', 'Multiple Choices'),
+        ),
       );
     });
 
@@ -100,6 +121,7 @@ void main() {
           throw http.ClientException('sin red');
         }),
       );
+
       await expectLater(api.get('/orders'), throwsA(isA<NetworkFailure>()));
     });
   });
