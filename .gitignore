@@ -55,3 +55,6 @@ app.*.map.json
 key.properties
 google-services.json
 GoogleService-Info.plist
+
+# Configuración local del SDK de Android (no versionar)
+/android/local.properties
